@@ -1,0 +1,15 @@
+<RCC>
+  <qresource prefix="back">
+    <file>back_img/网络系统.png</file>
+    <file>back_img/文件.png</file>
+    <file>back_img/停止.png</file>
+    <file>back_img/打开.png</file>
+    <file>back_img/关闭.png</file>
+    <file>back_img/还原.png</file>
+    <file>back_img/摄像头关.png</file>
+    <file>back_img/赞停.png</file>
+    <file>back_img/终止.png</file>
+    <file>back_img/最大化.png</file>
+    <file>back_img/最小化.png</file>
+  </qresource>
+</RCC>
