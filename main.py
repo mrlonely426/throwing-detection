@@ -116,6 +116,8 @@ class DetThread(QThread):
             plot_boxs = []
             conf_time = True
             time_save = 0
+            count_save = 0
+
             vid_writer = None
             dataset = iter(dataset)
             crop = None
@@ -159,6 +161,7 @@ class DetThread(QThread):
                     # if jump_count % 5 != 0:
                     #     continue
                     count += 1
+
                     # 每三十帧刷新一次输出帧率
                     if count % 30 == 0 and count >= 30:
                         fps = int(30/(time.time()-start_time))
@@ -182,6 +185,7 @@ class DetThread(QThread):
                     # Apply NMS
                     pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes, agnostic_nms, max_det=max_det)
                     # Process detections
+                    #label = None
 
                     for i, det in enumerate(pred):  # detections per image
                         im0 = im0s.copy()
@@ -201,62 +205,71 @@ class DetThread(QThread):
                                 #plot_one_box(xyxy, im0, label=label, color=colors(c, True),line_thickness=line_thickness)
                                 #save_im0=im0s.copy()
                                 print(len(plot_boxs))
-                                print(conf)
+                                print('count:{},conf:{}'.format(count,conf))
                                 plot_line_box(plot_boxs,im0, label=label, color=colors(c, True),line_thickness=line_thickness,on_box=True)
                                 crop = crop_box(xyxy, im0s,scale=img_width/img_height)
                                 if float(conf) > 0.2 and conf_time:
                                     time_save = time.time()
+                                    count_save = 1
                                     conf_time =False
 
-                                print('第一次出现抛物时间：{}，-----距离第一次出现抛物时长是:{}'.format(time_save,time.time()-time_save))
-                                if time.time()-time_save < self.save_time_length:
-                                    sig_save =True
-                                else:
-                                    sig_save = False
-
-                                if time.time() - time_save > self.save_time_length * 2:
-                                    sig_tra_img = True
-                                else:
-                                    sig_tra_img = False
+                                #print('第一次出现抛物时间：{}，-----距离第一次出现抛物时长是:{}'.format(time_save,time.time()-time_save))
 
                         else:
                             print('未检测到物体')
                             crop = crop
 
-                        if sig_tra_img and self.save_img and save_once:
-                            img_tra=im0s.copy()
-                            now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time()))
-                            plot_line_box(plot_boxs, img_tra, label=label, color=colors(c, True),
-                                          line_thickness=line_thickness, on_box=False)
-                            #cv2.imwrite('F://Project//pycharm//weather//runs//detect//tra_img.jpg', img_tra)
-                            cv2.imwrite(str(self.save_dir.joinpath(now + '-tra_img.jpg')), img_tra)
-                            save_once = False
+                    print('第一次出现抛物时间：{}，-----距离第一次出现抛物时长是:{}'.format(time_save, time.time() - time_save))
+                    if time_save != 0:
+                        count_save += 1
+                        if count_save < self.save_time_length :
+                            sig_save = True
 
-                        if sig_save and self.save_img:
-                            print('sig_save:{}'.format(sig_save))
-                            now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time()))
-                            if dataset.mode =='image':
-                                cv2.imwrite(str(self.save_dir.joinpath(now+'-tra_img.jpg')),im0)
-                            else:
-                                save_path = self.save_dir.joinpath(now+'-tra_video.mp4')
-                                print(str(save_path))
-                                if video_path !=save_path and video_path is None:
-                                    video_path =save_path
-                                    if isinstance(vid_writer,cv2.VideoWriter):
-                                        vid_writer.release()
+                        else:
+                            sig_save = False
 
-                                    if self.vid_cap:
-                                        fps = self.vid_cap.get(cv2.CAP_PROP_FPS)
-                                        w = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                                        h = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                                    else:
-                                        fps, w, h = 30,im0.shape[1],im0.shape[0]
 
-                                    vid_writer = cv2.VideoWriter(str(video_path),cv2.VideoWriter_fourcc(*'mp4v'), int(fps / 6), (w, h))
-                                    #vid_writer = cv2.VideoWriter('F://Project//pycharm//weather//runs//detect//save_video.mp4',cv2.VideoWriter_fourcc(*'mp4v'),int(fps/4),(w,h))
+                        if count_save > self.save_time_length * 1.5 :
+                            sig_tra_img = True
 
-                                vid_writer.write(im0)
-                                print('保存视频')
+                            print('保存图片')
+                        else:
+                            sig_tra_img = False
+
+                    if sig_tra_img and self.save_img and save_once:
+                        img_tra=im0s.copy()
+                        now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time()))
+                        plot_line_box(plot_boxs, img_tra, label=None, color=colors(200, True),
+                                      line_thickness=line_thickness, on_box=False)
+                        #cv2.imwrite('F://Project//pycharm//weather//runs//detect//tra_img.jpg', img_tra)
+                        cv2.imwrite(str(self.save_dir.joinpath(now + '-tra_img.jpg')), img_tra)
+                        save_once = False
+
+                    if sig_save and self.save_img:
+                        print('sig_save:{}'.format(sig_save))
+                        now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time()))
+                        if dataset.mode =='image':
+                            cv2.imwrite(str(self.save_dir.joinpath(now+'-tra_img.jpg')),im0)
+                        else:
+                            save_path = self.save_dir.joinpath(now+'-tra_video.mp4')
+                            print(str(save_path))
+                            if video_path !=save_path and video_path is None:
+                                video_path =save_path
+                                if isinstance(vid_writer,cv2.VideoWriter):
+                                    vid_writer.release()
+
+                                if self.vid_cap:
+                                    fps = self.vid_cap.get(cv2.CAP_PROP_FPS)
+                                    w = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                                    h = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                                else:
+                                    fps, w, h = 30,im0.shape[1],im0.shape[0]
+
+                                vid_writer = cv2.VideoWriter(str(video_path),cv2.VideoWriter_fourcc(*'mp4v'), int(fps / 6), (w, h))
+                                #vid_writer = cv2.VideoWriter('F://Project//pycharm//weather//runs//detect//save_video.mp4',cv2.VideoWriter_fourcc(*'mp4v'),int(fps/4),(w,h))
+
+                            vid_writer.write(im0)
+                            print('保存视频')
 
 
 
